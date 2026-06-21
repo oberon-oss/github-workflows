@@ -1,126 +1,139 @@
 name: Reusable Maven Snapshot Publish
 
 on:
-    workflow_call:
-        inputs:
-            java-version:
-                required: false
-                type: string
-                default: '25'
-            java-distribution:
-                required: false
-                type: string
-                default: temurin
-            maven-opts:
-                required: false
-                type: string
-                default: --sun-misc-unsafe-memory-access=allow
-            sonar-enabled:
-                required: false
-                type: boolean
-                default: true
-            sonar-project-key:
-                required: true
-                type: string
-            sonar-maven-profile:
-                required: false
-                type: string
-                default: coverage
-            snapshot-maven-profiles:
-                required: false
-                type: string
-                default: generate-javadoc-and-source
-            snapshot-branch:
-                required: false
-                type: string
-                default: master
-            maven-server-id:
-                required: false
-                type: string
-                default: central
-        secrets:
-            SONAR_TOKEN:
-                required: false
-            CENTRAL_USERNAME:
-                required: true
-            CENTRAL_PASSWORD:
-                required: true
+  workflow_call:
+    inputs:
+      java-version:
+        required: false
+        type: string
+        default: '25'
+      java-distribution:
+        required: false
+        type: string
+        default: temurin
+      maven-opts:
+        required: false
+        type: string
+        default: --sun-misc-unsafe-memory-access=allow
+      sonar-enabled:
+        required: false
+        type: boolean
+        default: true
+      sonar-project-key:
+        required: true
+        type: string
+      sonar-maven-profile:
+        required: false
+        type: string
+        default: coverage
+      snapshot-maven-profiles:
+        required: false
+        type: string
+        default: generate-javadoc-and-source
+      snapshot-branch:
+        required: false
+        type: string
+        default: master
+      maven-server-id:
+        required: false
+        type: string
+        default: central
+    secrets:
+      SONAR_TOKEN:
+        required: false
+      CENTRAL_USERNAME:
+        required: true
+      CENTRAL_PASSWORD:
+        required: true
 
 jobs:
-    sonar:
-        name: Sonar analysis
-        runs-on: ubuntu-latest
+  sonar:
+    name: Sonar analysis
+    runs-on: ubuntu-latest
 
-        if: inputs.sonar-enabled
+    if: inputs.sonar-enabled
 
-        permissions:
-            contents: read
+    permissions:
+      contents: read
 
-        steps:
-            -   uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-                with:
-                    fetch-depth: 0
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
 
-            -   uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
-                with:
-                    java-version: ${{ inputs.java-version }}
-                    distribution: ${{ inputs.java-distribution }}
-                    cache: maven
+      - uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: ${{ inputs.java-distribution }}
+          cache: maven
 
-            -   name: Analyze with Sonar
-                env:
-                    MAVEN_OPTS: ${{ inputs.maven-opts }}
-                    GITHUB_TOKEN: ${{ github.token }}
-                    SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-                run: mvn -B clean verify -P${{ inputs.sonar-maven-profile }} -Dsonar.projectKey=${{ inputs.sonar-project-key }} sonar:sonar -Dsonar.qualitygate.wait=true
+      - name: Build with SonarQube analysis
+        if: ${{ inputs.sonar-enabled }}
+        env:
+          MAVEN_OPTS: ${{ inputs.maven-opts }}
+          GITHUB_TOKEN: ${{ github.token }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: mvn -B clean verify -P${{ inputs.sonar-maven-profile }} sonar:sonar -Dsonar.qualitygate.wait=true
 
-    publish-snapshot:
-        name: Publish Maven SNAPSHOT
-        runs-on: ubuntu-latest
+      - name: Build without SonarQube analysis
+        if: ${{ !inputs.sonar-enabled && inputs.snapshot-maven-profiles == '' }}
+        env:
+          MAVEN_OPTS: ${{ inputs.maven-opts }}
+        run: mvn -B clean verify
 
-        needs:
-            - sonar
+      - name: Build without SonarQube analysis with profiles
+        if: ${{ !inputs.sonar-enabled && inputs.snapshot-maven-profiles != '' }}
+        env:
+          MAVEN_OPTS: ${{ inputs.maven-opts }}
+        run: mvn -B clean verify -P${{ inputs.snapshot-maven-profiles }}
 
-        if: |
-            always() &&
-            github.event_name == 'push' &&
-            github.ref == format('refs/heads/{0}', inputs.snapshot-branch) &&
-            (
-                inputs.sonar-enabled == false ||
-                needs.sonar.result == 'success'
-            )
+  publish-snapshot:
+    name: Publish Maven SNAPSHOT
+    runs-on: ubuntu-latest
 
-        permissions:
-            contents: read
+    needs:
+      - sonar
 
-        steps:
-            -   uses: actions/checkout@v4
+    if: |
+      always() &&
+      github.event_name == 'push' &&
+      github.ref == format('refs/heads/{0}', inputs.snapshot-branch) &&
+      (
+          inputs.sonar-enabled == false ||
+          needs.sonar.result == 'success'
+      )
 
-            -   uses: actions/setup-java@v4
-                with:
-                    java-version: ${{ inputs.java-version }}
-                    distribution: ${{ inputs.java-distribution }}
-                    cache: maven
-                    server-id: ${{ inputs.maven-server-id }}
-                    server-username: CENTRAL_USERNAME
-                    server-password: CENTRAL_PASSWORD
+    permissions:
+      contents: read
 
-            -   name: Read Maven project version
-                id: project-version
-                env:
-                    MAVEN_OPTS: ${{ inputs.maven-opts }}
-                run: |
-                    VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-                    echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+    steps:
+      - uses: actions/checkout@v4
 
-            -   name: Publish SNAPSHOT
-                if: endsWith(steps.project-version.outputs.version, '-SNAPSHOT')
-                env:
-                    MAVEN_OPTS: ${{ inputs.maven-opts }}
-                    CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
-                    CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
-                run: mvn -B -DskipTests deploy -P${{ inputs.snapshot-maven-profiles }}
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: ${{ inputs.java-distribution }}
+          cache: maven
+          server-id: ${{ inputs.maven-server-id }}
+          server-username: CENTRAL_USERNAME
+          server-password: CENTRAL_PASSWORD
 
-            -   name: Skip SNAPSHOT publishing
-                if: ${{ !endsWith(steps.project-version.outputs.version, '-SNAPSHOT') }}
-                run: echo "Project version '${{ steps.project-version.outputs.version }}' is not a SNAPSHOT version. Skipping snapshot deployment."
+      - name: Read Maven project version
+        id: project-version
+        env:
+          MAVEN_OPTS: ${{ inputs.maven-opts }}
+        run: |
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Publish SNAPSHOT
+        if: endsWith(steps.project-version.outputs.version, '-SNAPSHOT')
+        env:
+          MAVEN_OPTS: ${{ inputs.maven-opts }}
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+        run: mvn -B -DskipTests deploy -P${{ inputs.snapshot-maven-profiles }}
+
+      - name: Skip SNAPSHOT publishing
+        if: ${{ !endsWith(steps.project-version.outputs.version, '-SNAPSHOT') }}
+        run: echo "Project version '${{ steps.project-version.outputs.version }}' is not a SNAPSHOT version. Skipping snapshot deployment."
