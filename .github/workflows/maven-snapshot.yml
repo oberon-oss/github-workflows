@@ -48,10 +48,8 @@ on:
 
 jobs:
   sonar:
-    name: Sonar analysis
+    name: Maven verification
     runs-on: ubuntu-latest
-
-    if: inputs.sonar-enabled
 
     permissions:
       contents: read
