@@ -19,6 +19,9 @@ on:
                 required: false
                 type: boolean
                 default: true
+            sonar-project-key:
+                required: true
+                type: string
             sonar-maven-profile:
                 required: false
                 type: string
@@ -69,7 +72,7 @@ jobs:
                     MAVEN_OPTS: ${{ inputs.maven-opts }}
                     GITHUB_TOKEN: ${{ github.token }}
                     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-                run: mvn -B clean verify -P${{ inputs.sonar-maven-profile }} sonar:sonar -Dsonar.qualitygate.wait=true
+                run: mvn -B clean verify -P${{ inputs.sonar-maven-profile }} -Dsonar.projectKey=${{ inputs.sonar-project-key }} sonar:sonar -Dsonar.qualitygate.wait=true
 
     publish-snapshot:
         name: Publish Maven SNAPSHOT
