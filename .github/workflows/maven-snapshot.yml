@@ -110,7 +110,7 @@ jobs:
           MAVEN_OPTS: ${{ inputs.maven-opts }}
           GITHUB_TOKEN: ${{ github.token }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B verify -P${{ inputs.sonar-maven-profile }} sonar:sonar -Dsonar.qualitygate.wait=true
+        run: mvn -B verify -P${{ inputs.sonar-maven-profile }} sonar:sonar -Dsonar.projectKey=${{ inputs.sonar-project-key }} -Dsonar.qualitygate.wait=true
 
       - name: Run non-blocking SonarQube analysis
         if: ${{ !inputs.sonar-quality-gate-blocking }}
@@ -119,7 +119,7 @@ jobs:
           MAVEN_OPTS: ${{ inputs.maven-opts }}
           GITHUB_TOKEN: ${{ github.token }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B verify -P${{ inputs.sonar-maven-profile }} sonar:sonar -Dsonar.qualitygate.wait=true
+        run: mvn -B verify -P${{ inputs.sonar-maven-profile }} sonar:sonar -Dsonar.projectKey=${{ inputs.sonar-project-key }} -Dsonar.qualitygate.wait=true
 
   publish-snapshot:
     name: Publish Maven SNAPSHOT
