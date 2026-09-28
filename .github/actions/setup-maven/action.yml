@@ -1,65 +1,66 @@
 name: 'Setup Maven with Nexus Mirror'
-description: 'Sets up Java and configures ~/.m2/settings.xml with Nexus mirror and server credentials'
+description: 'Sets up Java, configures ~/.m2/settings.xml with Nexus mirror/credentials, and sets quiet Maven args'
 inputs:
-    java-version:
-        description: 'Java Version'
-        required: false
-        default: '25'
-    distribution:
-        description: 'Java Distribution'
-        required: false
-        default: 'temurin'
-    server-id:
-        description: 'Server ID for repository authentication'
-        required: false
-    server-username:
-        description: 'Server username'
-        required: false
-    server-password:
-        description: 'Server password'
-        required: false
+  java-version:
+    description: 'Java Version'
+    required: false
+    default: '25'
+  distribution:
+    description: 'Java Distribution'
+    required: false
+    default: 'temurin'
+  server-id:
+    description: 'Server ID for repository authentication'
+    required: false
+  server-username:
+    description: 'Server username'
+    required: false
+  server-password:
+    description: 'Server password'
+    required: false
 
 runs:
-    using: 'composite'
-    steps:
-        - name: Set up JDK
-          uses: actions/setup-java@v4
-          with:
-              java-version: ${{ inputs.java-version }}
-              distribution: ${{ inputs.distribution }}
-              cache: 'maven'
+  using: 'composite'
+  steps:
+    - name: Set up JDK
+      uses: actions/setup-java@v5
+      with:
+        java-version: ${{ inputs.java-version }}
+        distribution: ${{ inputs.distribution }}
+        cache: 'maven'
 
-        - name: Configure ~/.m2/settings.xml
-          shell: bash
-          env:
-              SERVER_ID: ${{ inputs.server-id }}
-              SERVER_USERNAME: ${{ inputs.server-username }}
-              SERVER_PASSWORD: ${{ inputs.server-password }}
-          run: |
-              mkdir -p ~/.m2
-              
-              SERVERS_BLOCK=""
-              if [ -n "$SERVER_ID" ] && [ -n "$SERVER_USERNAME" ] && [ -n "$SERVER_PASSWORD" ]; then
-                SERVERS_BLOCK="<servers>
-                  <server>
-                    <id>${SERVER_ID}</id>
-                    <username>${SERVER_USERNAME}</username>
-                    <password>${SERVER_PASSWORD}</password>
-                  </server>
-                </servers>"
-              fi
-              
-              cat << EOF > ~/.m2/settings.xml
-              <settings xmlns="https://maven.apache.org/SETTINGS/1.0.0"
-                        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                        xsi:schemaLocation="https://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
-                ${SERVERS_BLOCK}
-                <mirrors>
-                  <mirror>
-                    <id>01-nexus-mirror-maven-central</id>
-                    <mirrorOf>external:*,!nexus-releases,!nexus-snapshots</mirrorOf>
-                    <url>https://nexus.oberon-oss.eu/repository/maven-central/</url>
-                  </mirror>
-                </mirrors>
-              </settings>
-              EOF
+    - name: Configure ~/.m2/settings.xml and Maven environment
+      shell: bash
+      env:
+        SERVER_ID: ${{ inputs.server-id }}
+        SERVER_USERNAME: ${{ inputs.server-username }}
+        SERVER_PASSWORD: ${{ inputs.server-password }}
+      run: |
+        echo "MAVEN_ARGS=-B --no-transfer-progress" >> "$GITHUB_ENV"
+        mkdir -p ~/.m2
+        
+        SERVERS_BLOCK=""
+        if [ -n "$SERVER_ID" ] && [ -n "$SERVER_USERNAME" ] && [ -n "$SERVER_PASSWORD" ]; then
+          SERVERS_BLOCK="<servers>
+            <server>
+              <id>${SERVER_ID}</id>
+              <username>${SERVER_USERNAME}</username>
+              <password>${SERVER_PASSWORD}</password>
+            </server>
+          </servers>"
+        fi
+        
+        cat << EOF > ~/.m2/settings.xml
+        <settings xmlns="https://maven.apache.org/SETTINGS/1.0.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="https://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+          ${SERVERS_BLOCK}
+          <mirrors>
+            <mirror>
+              <id>01-nexus-mirror-maven-central</id>
+              <mirrorOf>external:*,!nexus-releases,!nexus-snapshots</mirrorOf>
+              <url>https://nexus.oberon-oss.eu/repository/maven-central/</url>
+            </mirror>
+          </mirrors>
+        </settings>
+        EOF
