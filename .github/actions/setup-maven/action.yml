@@ -1,0 +1,35 @@
+name: 'Setup Maven with Nexus Mirror'
+author: TigerLilly64
+description: 'Sets up Java and configures ~/.m2/settings.xml'
+inputs:
+    java-version:
+        description: 'Java Version'
+        required: false
+        default: '25'
+runs:
+    using: 'composite'
+    steps:
+        - name: Set up JDK
+          uses: actions/setup-java@v4
+          with:
+              java-version: ${{ inputs.java-version }}
+              distribution: 'temurin'
+              cache: 'maven'
+
+        - name: Configure ~/.m2/settings.xml
+          shell: bash
+          run: |
+              mkdir -p ~/.m2
+              cat << 'EOF' > ~/.m2/settings.xml
+              <settings xmlns="https://maven.apache.org/SETTINGS/1.0.0"
+                        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                        xsi:schemaLocation="https://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+                <mirrors>
+                  <mirror>
+                    <id>01-nexus-mirror-maven-central</id>
+                    <mirrorOf>external:*,!nexus-releases,!nexus-snapshots</mirrorOf>
+                    <url>https://nexus.oberon-oss.eu/repository/maven-central/</url>
+                  </mirror>
+                </mirrors>
+              </settings>
+              EOF
