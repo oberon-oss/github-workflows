@@ -39,6 +39,9 @@ jobs:
           java-version: ${{ inputs.java-version }}
           distribution: ${{ inputs.distribution }}
           cache: 'maven'
+      - uses: oberon-oss/github-workflows/.github/actions/setup-maven@b33715ec50cc85fbfb8d86e5ff9c1a85879fca9b
+        with:
+          java-version: ${{ inputs.java-version }}
       - name: Evaluate Deployment Target
         id: eval-deploy
         run: |
@@ -93,6 +96,9 @@ jobs:
           java-version: ${{ inputs.java-version }}
           distribution: ${{ inputs.distribution }}
           cache: 'maven'
+      - uses: oberon-oss/github-workflows/.github/actions/setup-maven@b33715ec50cc85fbfb8d86e5ff9c1a85879fca9b
+        with:
+          java-version: ${{ inputs.java-version }}
       - name: Run Tests (Release Tag)
         if: needs.compile.outputs.is_release == 'true'
         run: mvn test
@@ -126,6 +132,9 @@ jobs:
           server-id: nexus-repository
           server-username: NEXUS_USERNAME
           server-password: NEXUS_PASSWORD
+      - uses: oberon-oss/github-workflows/.github/actions/setup-maven@b33715ec50cc85fbfb8d86e5ff9c1a85879fca9b
+        with:
+          java-version: ${{ inputs.java-version }}
       - name: Validate Release Quality Gate
         if: needs.compile.outputs.is_release == 'true' && needs.test-and-sonar.result != 'success'
         run: |
