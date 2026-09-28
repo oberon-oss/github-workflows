@@ -13,10 +13,13 @@ on:
         default: 'temurin'
     secrets:
       SONAR_TOKEN:
+        description: 'Token for SonarCloud analysis'
         required: false
       NEXUS_USERNAME:
+        description: 'Nexus repository username'
         required: true
       NEXUS_PASSWORD:
+        description: 'Nexus repository password'
         required: true
 
 jobs:
