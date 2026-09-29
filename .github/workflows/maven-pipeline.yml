@@ -144,3 +144,48 @@ jobs:
         run: |
           mvn versions:set -DnewVersion="${{ needs.compile.outputs.snapshot_version }}" -DgenerateBackupPoms=false
           mvn deploy -Pgenerate-javadoc-and-source,activate-oberon-nexus -DskipTests=true
+
+  deploy-site:
+    name: 4. Deploy Site to GitHub Pages
+    needs: [compile, test-and-sonar, deploy]
+    if: |
+      always() &&
+      !cancelled() &&
+      needs.compile.result == 'success' &&
+      needs.test-and-sonar.result == 'success' &&
+      needs.deploy.result == 'success' &&
+      needs.compile.outputs.is_release == 'true'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oberon-oss/github-workflows/.github/actions/setup-maven@923330280520e84964ba96bdf00bac952694a1fc
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: ${{ inputs.distribution }}
+
+      - name: Generate Maven Site
+        run: |
+          mvn versions:set -DnewVersion="${{ needs.compile.outputs.release_version }}" -DgenerateBackupPoms=false
+          mvn clean site
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: target/site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
