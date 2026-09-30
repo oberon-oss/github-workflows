@@ -1,4 +1,4 @@
-name: Shared Maven CI/CD Pipeline
+name: Shared Maven CI/CD Pipeline v2.0.3
 
 on:
   workflow_call:
