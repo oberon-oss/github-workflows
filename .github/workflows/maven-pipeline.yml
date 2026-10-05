@@ -1,4 +1,4 @@
-name: Shared Maven CI/CD Pipeline v2.0.3
+name: Shared Maven CI/CD Pipeline v2.0.5
 
 on:
   workflow_call:
@@ -15,6 +15,41 @@ on:
         required: false
         type: string
         default: 'nexus-repository'
+      profiles:
+        description: 'Additional Maven profiles to activate for all jobs'
+        required: false
+        type: string
+        default: ''
+      compile-profiles:
+        description: 'Additional Maven profiles for the compile job'
+        required: false
+        type: string
+        default: ''
+      test-profiles:
+        description: 'Additional Maven profiles for the test and sonar job'
+        required: false
+        type: string
+        default: ''
+      test-and-sonar-profiles:
+        description: 'Additional Maven profiles for the test and sonar job (alias for test-profiles)'
+        required: false
+        type: string
+        default: ''
+      deploy-profiles:
+        description: 'Additional Maven profiles for the deploy job'
+        required: false
+        type: string
+        default: ''
+      site-profiles:
+        description: 'Additional Maven profiles for the site deployment job'
+        required: false
+        type: string
+        default: ''
+      deploy-site-profiles:
+        description: 'Additional Maven profiles for the site deployment job (alias for site-profiles)'
+        required: false
+        type: string
+        default: ''
     secrets:
       SONAR_TOKEN:
         description: 'Token for SonarCloud analysis'
@@ -82,7 +117,15 @@ jobs:
           echo "should_deploy=$SHOULD_DEPLOY" >> "$GITHUB_OUTPUT"
 
       - name: Compile Main & Test Code
-        run: mvn clean test-compile -DskipTests=true
+        env:
+          GLOBAL_PROFILES: ${{ inputs.profiles }}
+          JOB_PROFILES: ${{ inputs.compile-profiles }}
+        run: |
+          PROFILES=""
+          for p in "$GLOBAL_PROFILES" "$JOB_PROFILES"; do
+            [ -n "$p" ] && PROFILES="${PROFILES:+$PROFILES,}$p"
+          done
+          mvn clean test-compile -DskipTests=true ${PROFILES:+-P$PROFILES}
 
   test-and-sonar:
     name: 2. Test, Coverage & SonarCloud
@@ -99,14 +142,29 @@ jobs:
 
       - name: Run Tests (Release Tag)
         if: needs.compile.outputs.is_release == 'true'
-        run: mvn test
+        env:
+          GLOBAL_PROFILES: ${{ inputs.profiles }}
+          JOB_PROFILES: ${{ inputs.test-profiles || inputs.test-and-sonar-profiles }}
+        run: |
+          PROFILES=""
+          for p in "$GLOBAL_PROFILES" "$JOB_PROFILES"; do
+            [ -n "$p" ] && PROFILES="${PROFILES:+$PROFILES,}$p"
+          done
+          mvn test ${PROFILES:+-P$PROFILES}
 
       - name: Run Tests, JaCoCo and SonarCloud (Branch / Snapshot)
         if: needs.compile.outputs.is_release != 'true'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn test jacoco:report org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.qualitygate.wait=true
+          GLOBAL_PROFILES: ${{ inputs.profiles }}
+          JOB_PROFILES: ${{ inputs.test-profiles || inputs.test-and-sonar-profiles }}
+        run: |
+          PROFILES=""
+          for p in "$GLOBAL_PROFILES" "$JOB_PROFILES"; do
+            [ -n "$p" ] && PROFILES="${PROFILES:+$PROFILES,}$p"
+          done
+          mvn test jacoco:report org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.qualitygate.wait=true ${PROFILES:+-P$PROFILES}
 
   deploy:
     name: 3. Deploy to Nexus Repository
@@ -135,15 +193,29 @@ jobs:
 
       - name: Publish Release to Nexus
         if: needs.compile.outputs.is_release == 'true' && needs.test-and-sonar.result == 'success'
+        env:
+          GLOBAL_PROFILES: ${{ inputs.profiles }}
+          JOB_PROFILES: ${{ inputs.deploy-profiles }}
         run: |
+          PROFILES="generate-javadoc-and-source,activate-oberon-nexus"
+          for p in "$GLOBAL_PROFILES" "$JOB_PROFILES"; do
+            [ -n "$p" ] && PROFILES="${PROFILES:+$PROFILES,}$p"
+          done
           mvn versions:set -DnewVersion="${{ needs.compile.outputs.release_version }}" -DgenerateBackupPoms=false
-          mvn deploy -Pgenerate-javadoc-and-source,activate-oberon-nexus -DskipTests=true
+          mvn deploy -P$PROFILES -DskipTests=true
 
       - name: Publish Snapshot to Nexus
         if: needs.compile.outputs.is_snapshot == 'true'
+        env:
+          GLOBAL_PROFILES: ${{ inputs.profiles }}
+          JOB_PROFILES: ${{ inputs.deploy-profiles }}
         run: |
+          PROFILES="generate-javadoc-and-source,activate-oberon-nexus"
+          for p in "$GLOBAL_PROFILES" "$JOB_PROFILES"; do
+            [ -n "$p" ] && PROFILES="${PROFILES:+$PROFILES,}$p"
+          done
           mvn versions:set -DnewVersion="${{ needs.compile.outputs.snapshot_version }}" -DgenerateBackupPoms=false
-          mvn deploy -Pgenerate-javadoc-and-source,activate-oberon-nexus -DskipTests=true
+          mvn deploy -P$PROFILES -DskipTests=true
 
   deploy-site:
     name: 4. Deploy Site to GitHub Pages
@@ -174,9 +246,16 @@ jobs:
           distribution: ${{ inputs.distribution }}
 
       - name: Generate Maven Site
+        env:
+          GLOBAL_PROFILES: ${{ inputs.profiles }}
+          JOB_PROFILES: ${{ inputs.site-profiles || inputs.deploy-site-profiles }}
         run: |
+          PROFILES="site"
+          for p in "$GLOBAL_PROFILES" "$JOB_PROFILES"; do
+            [ -n "$p" ] && PROFILES="${PROFILES:+$PROFILES,}$p"
+          done
           mvn versions:set -DnewVersion="${{ needs.compile.outputs.release_version }}" -DgenerateBackupPoms=false
-          mvn clean site -P site
+          mvn clean site -P$PROFILES
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
