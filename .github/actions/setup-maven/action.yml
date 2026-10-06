@@ -51,5 +51,12 @@ runs:
               <password>${env.NEXUS_PASSWORD}</password>
             </server>
           </servers>
+          <mirrors>
+            <mirror>
+              <id>01-nexus-mirror-maven-central</id>
+              <mirrorOf>external:*,!nexus-releases,!nexus-snapshots</mirrorOf>
+              <url>https://nexus.oberon-oss.eu/repository/maven-central/</url>
+            </mirror>
+          </mirrors>
         </settings>
         EOF
