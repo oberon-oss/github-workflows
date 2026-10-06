@@ -33,6 +33,7 @@ runs:
         NEXUS_USERNAME: ${{ inputs.nexus-username }}
         NEXUS_PASSWORD: ${{ inputs.nexus-password }}
       run: |
+        echo "MAVEN_ARGS=-B --no-transfer-progress" >> "$GITHUB_ENV"
         mkdir -p ~/.m2
         cat << 'EOF' > ~/.m2/settings.xml
         <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
