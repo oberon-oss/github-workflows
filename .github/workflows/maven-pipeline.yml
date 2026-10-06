@@ -47,7 +47,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup JDK and Maven Settings
-        uses: oberon-oss/github-workflows/.github/actions/setup-maven@c789a17a76beb6c14dc2e0e92a967c025ef73a10 # v2.0.3
+        uses: oberon-oss/github-workflows/.github/actions/setup-maven@b8886a2905cc83b8c5229d52cda21fd1dde506d7 # v2.0.3
         with:
           java-version: ${{ inputs.java-version }}
           nexus-username: ${{ secrets.NEXUS_USERNAME }}
@@ -83,7 +83,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup JDK and Maven Settings
-        uses: oberon-oss/github-workflows/.github/actions/setup-maven@c789a17a76beb6c14dc2e0e92a967c025ef73a10 # v2.0.3
+        uses: oberon-oss/github-workflows/.github/actions/setup-maven@b8886a2905cc83b8c5229d52cda21fd1dde506d7 # v2.0.3
         with:
           java-version: ${{ inputs.java-version }}
           nexus-username: ${{ secrets.NEXUS_USERNAME }}
@@ -115,7 +115,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup JDK and Maven Settings
-        uses: oberon-oss/github-workflows/.github/actions/setup-maven@c789a17a76beb6c14dc2e0e92a967c025ef73a10 # v2.0.3
+        uses: oberon-oss/github-workflows/.github/actions/setup-maven@b8886a2905cc83b8c5229d52cda21fd1dde506d7 # v2.0.3
         with:
           java-version: ${{ inputs.java-version }}
           nexus-username: ${{ secrets.NEXUS_USERNAME }}
@@ -135,7 +135,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup JDK and Maven Settings
-        uses: oberon-oss/github-workflows/.github/actions/setup-maven@c789a17a76beb6c14dc2e0e92a967c025ef73a10 # v2.0.3
+        uses: oberon-oss/github-workflows/.github/actions/setup-maven@b8886a2905cc83b8c5229d52cda21fd1dde506d7 # v2.0.3
         with:
           java-version: ${{ inputs.java-version }}
           nexus-username: ${{ secrets.NEXUS_USERNAME }}
