@@ -45,7 +45,7 @@ on:
         required: false
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: ${{ inputs.cancel-in-progress && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
 
 jobs:
@@ -117,7 +117,7 @@ jobs:
     name: Deploy Snapshot
     needs: build-and-test
     if: |
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') &&
       endsWith(needs.build-and-test.outputs.version, '-SNAPSHOT')
     runs-on: ubuntu-latest
     steps:
