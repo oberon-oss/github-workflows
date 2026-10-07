@@ -28,6 +28,11 @@ on:
         required: false
         default: true
         type: boolean
+      cancel-in-progress:
+        description: 'Whether to cancel in-progress runs for non-main branches'
+        required: false
+        default: true
+        type: boolean
     secrets:
       SONAR_TOKEN:
         description: 'SonarCloud authentication token'
@@ -38,6 +43,10 @@ on:
       NEXUS_PASSWORD:
         description: 'Nexus repository password'
         required: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ inputs.cancel-in-progress && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
 
 jobs:
   build-and-test:
