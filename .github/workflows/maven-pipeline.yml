@@ -65,7 +65,7 @@ jobs:
       - name: Extract Project Version
         id: version
         run: |
-          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | tr -d '\r' | tail -n 1)
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Compile and Test
