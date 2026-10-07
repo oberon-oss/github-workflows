@@ -46,16 +46,25 @@ runs:
               <id>nexus-repository</id>
               <username>${NEXUS_USERNAME}</username>
               <password>${NEXUS_PASSWORD}</password>
+              <repositoryOrigins>
+                <repositoryOrigin>https://nexus.oberon-oss.eu</repositoryOrigin>
+              </repositoryOrigins>
             </server>
             <server>
               <id>nexus-releases</id>
               <username>${NEXUS_USERNAME}</username>
               <password>${NEXUS_PASSWORD}</password>
+              <repositoryOrigins>
+                <repositoryOrigin>https://nexus.oberon-oss.eu</repositoryOrigin>
+              </repositoryOrigins>
             </server>
             <server>
               <id>nexus-snapshots</id>
               <username>${NEXUS_USERNAME}</username>
               <password>${NEXUS_PASSWORD}</password>
+              <repositoryOrigins>
+                <repositoryOrigin>https://nexus.oberon-oss.eu</repositoryOrigin>
+              </repositoryOrigins>
             </server>
           </servers>
           <mirrors>
