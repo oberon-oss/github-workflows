@@ -23,6 +23,11 @@ on:
         required: false
         default: 'lombok,activate-oberon-nexus'
         type: string
+      site-profiles:
+        description: 'Maven profiles for site generation'
+        required: false
+        default: 'site'
+        type: string
       sonar-qualitygate-wait:
         description: 'Whether to wait for Sonar Quality Gate'
         required: false
@@ -153,3 +158,45 @@ jobs:
 
       - name: Deploy Release Artifacts
         run: mvn deploy -DskipTests -P ${{ inputs.deploy-profiles }}
+
+  deploy-site:
+    name: Deploy Site to GitHub Pages
+    needs: [build-and-test, sonar-qa, deploy-release]
+    if: |
+      github.event_name == 'release' &&
+      !endsWith(needs.build-and-test.outputs.version, '-SNAPSHOT')
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK and Maven Settings
+        uses: oberon-oss/github-workflows/.github/actions/setup-maven@f579f468f82a896a5f11595e498c3cae67ca21bb
+        with:
+          java-version: ${{ inputs.java-version }}
+          nexus-username: ${{ secrets.NEXUS_USERNAME }}
+          nexus-password: ${{ secrets.NEXUS_PASSWORD }}
+
+      - name: Generate Maven Site
+        run: mvn clean site -P ${{ inputs.site-profiles }}
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: target/site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
