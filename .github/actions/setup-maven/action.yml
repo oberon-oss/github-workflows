@@ -111,7 +111,7 @@ runs:
           <mirrors>
             <mirror>
               <id>01-nexus-mirror-maven-central</id>
-              <mirrorOf>external:*,!nexus-repository,!nexus-releases,!nexus-snapshots,!central,!ossrh</mirrorOf>
+              <mirrorOf>external:*,!nexus-repository,!nexus-releases,!nexus-snapshots</mirrorOf>
               <url>https://nexus.oberon-oss.eu/repository/maven-central/</url>
             </mirror>
           </mirrors>
