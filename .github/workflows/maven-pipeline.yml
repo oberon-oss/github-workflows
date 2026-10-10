@@ -18,10 +18,20 @@ on:
         required: false
         default: 'lombok,jacoco'
         type: string
-      deploy-profiles:
-        description: 'Maven profiles for deployment'
+      deploy-target:
+        description: 'Target repository for release deployment (nexus, central, both, none)'
         required: false
-        default: 'lombok,activate-oberon-nexus'
+        default: 'nexus'
+        type: string
+      deploy-profiles:
+        description: 'Maven profiles for Nexus deployment'
+        required: false
+        default: 'lombok,deploy-to-nexus'
+        type: string
+      deploy-central-profiles:
+        description: 'Maven profiles for Maven Central deployment'
+        required: false
+        default: 'lombok,deploy-to-maven-central'
         type: string
       site-profiles:
         description: 'Maven profiles for site generation'
@@ -48,6 +58,18 @@ on:
       NEXUS_PASSWORD:
         description: 'Nexus repository password'
         required: false
+      CENTRAL_USERNAME:
+        description: 'Maven Central username / token username'
+        required: false
+      CENTRAL_PASSWORD:
+        description: 'Maven Central password / token password'
+        required: false
+      GPG_PRIVATE_KEY:
+        description: 'GPG private key for signing artifacts'
+        required: false
+      GPG_PASSPHRASE:
+        description: 'GPG passphrase for signing artifacts'
+        required: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
@@ -61,7 +83,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup JDK and Maven Settings
-        uses: oberon-oss/github-workflows/.github/actions/setup-maven@f579f468f82a896a5f11595e498c3cae67ca21bb
+        uses: oberon-oss/github-workflows/.github/actions/setup-maven@e737cd07562949d1631128961b6b2ee583235512
         with:
           java-version: ${{ inputs.java-version }}
           nexus-username: ${{ secrets.NEXUS_USERNAME }}
@@ -98,7 +120,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup JDK and Maven Settings
-        uses: oberon-oss/github-workflows/.github/actions/setup-maven@f579f468f82a896a5f11595e498c3cae67ca21bb
+        uses: oberon-oss/github-workflows/.github/actions/setup-maven@e737cd07562949d1631128961b6b2ee583235512
         with:
           java-version: ${{ inputs.java-version }}
           nexus-username: ${{ secrets.NEXUS_USERNAME }}
@@ -130,7 +152,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup JDK and Maven Settings
-        uses: oberon-oss/github-workflows/.github/actions/setup-maven@f579f468f82a896a5f11595e498c3cae67ca21bb
+        uses: oberon-oss/github-workflows/.github/actions/setup-maven@e737cd07562949d1631128961b6b2ee583235512
         with:
           java-version: ${{ inputs.java-version }}
           nexus-username: ${{ secrets.NEXUS_USERNAME }}
@@ -139,25 +161,51 @@ jobs:
       - name: Deploy Snapshot Artifacts
         run: mvn deploy -DskipTests -P ${{ inputs.deploy-profiles }}
 
-  deploy-release:
-    name: Deploy Release
+  deploy-release-nexus:
+    name: Deploy Release (Nexus)
     needs: [ build-and-test, sonar-qa ]
     if: |
       (github.event_name == 'release' || github.event_name == 'workflow_dispatch') &&
-      !endsWith(needs.build-and-test.outputs.version, '-SNAPSHOT')
+      !endsWith(needs.build-and-test.outputs.version, '-SNAPSHOT') &&
+      (inputs.deploy-target == 'nexus' || inputs.deploy-target == 'both')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup JDK and Maven Settings
-        uses: oberon-oss/github-workflows/.github/actions/setup-maven@f579f468f82a896a5f11595e498c3cae67ca21bb
+        uses: oberon-oss/github-workflows/.github/actions/setup-maven@e737cd07562949d1631128961b6b2ee583235512
         with:
           java-version: ${{ inputs.java-version }}
           nexus-username: ${{ secrets.NEXUS_USERNAME }}
           nexus-password: ${{ secrets.NEXUS_PASSWORD }}
 
-      - name: Deploy Release Artifacts
+      - name: Deploy Release Artifacts to Nexus
         run: mvn deploy -DskipTests -P ${{ inputs.deploy-profiles }}
+
+  deploy-release-central:
+    name: Deploy Release (Maven Central)
+    needs: [ build-and-test, sonar-qa ]
+    if: |
+      (github.event_name == 'release' || github.event_name == 'workflow_dispatch') &&
+      !endsWith(needs.build-and-test.outputs.version, '-SNAPSHOT') &&
+      (inputs.deploy-target == 'central' || inputs.deploy-target == 'both')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK and Maven Settings
+        uses: oberon-oss/github-workflows/.github/actions/setup-maven@e737cd07562949d1631128961b6b2ee583235512
+        with:
+          java-version: ${{ inputs.java-version }}
+          nexus-username: ${{ secrets.NEXUS_USERNAME }}
+          nexus-password: ${{ secrets.NEXUS_PASSWORD }}
+          central-username: ${{ secrets.CENTRAL_USERNAME }}
+          central-password: ${{ secrets.CENTRAL_PASSWORD }}
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Deploy Release Artifacts to Maven Central
+        run: mvn deploy -DskipTests -P ${{ inputs.deploy-central-profiles }}
 
   deploy-site:
     name: Deploy Documentation Site
@@ -180,7 +228,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup JDK and Maven Settings
-        uses: oberon-oss/github-workflows/.github/actions/setup-maven@f579f468f82a896a5f11595e498c3cae67ca21bb
+        uses: oberon-oss/github-workflows/.github/actions/setup-maven@e737cd07562949d1631128961b6b2ee583235512
         with:
           java-version: ${{ inputs.java-version }}
           nexus-username: ${{ secrets.NEXUS_USERNAME }}
