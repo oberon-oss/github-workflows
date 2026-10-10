@@ -1,5 +1,5 @@
 name: 'Maven Setup'
-description: 'Sets up JDK and configures ~/.m2/settings.xml with Nexus credentials'
+description: 'Sets up JDK and configures ~/.m2/settings.xml with Nexus and Maven Central credentials'
 
 inputs:
   java-version:
@@ -16,6 +16,21 @@ inputs:
   nexus-password:
     description: 'Nexus Password'
     required: false
+  sonar-token:
+    description: 'Sonar Token'
+    required: false
+  central-username:
+    description: 'Maven Central Username'
+    required: false
+  central-password:
+    description: 'Maven Central Password'
+    required: false
+  gpg-private-key:
+    description: 'GPG Private Key'
+    required: false
+  gpg-passphrase:
+    description: 'GPG Passphrase'
+    required: false
 
 runs:
   using: 'composite'
@@ -27,11 +42,27 @@ runs:
         distribution: ${{ inputs.java-distribution }}
         cache: maven
 
+    - name: Configure GPG Key
+      if: inputs.gpg-private-key != ''
+      shell: bash
+      env:
+        GPG_PRIVATE_KEY: ${{ inputs.gpg-private-key }}
+      run: |
+        mkdir -p ~/.gnupg
+        chmod 700 ~/.gnupg
+        echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+        echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+        gpgconf --reload gpg-agent 2>/dev/null || true
+        echo "$GPG_PRIVATE_KEY" | gpg --batch --yes --import
+
     - name: Configure Maven settings.xml
       shell: bash
       env:
         NEXUS_USERNAME: ${{ inputs.nexus-username }}
         NEXUS_PASSWORD: ${{ inputs.nexus-password }}
+        CENTRAL_USERNAME: ${{ inputs.central-username }}
+        CENTRAL_PASSWORD: ${{ inputs.central-password }}
+        GPG_PASSPHRASE: ${{ inputs.gpg-passphrase }}
       # noinspection HttpUrlsUsage
       run: |
         echo "MAVEN_ARGS=-B --no-transfer-progress" >> "$GITHUB_ENV"
@@ -66,13 +97,34 @@ runs:
                 <repositoryOrigin>https://nexus.oberon-oss.eu</repositoryOrigin>
               </repositoryOrigins>
             </server>
+            <server>
+              <id>central</id>
+              <username>${CENTRAL_USERNAME}</username>
+              <password>${CENTRAL_PASSWORD}</password>
+            </server>
+            <server>
+              <id>ossrh</id>
+              <username>${CENTRAL_USERNAME}</username>
+              <password>${CENTRAL_PASSWORD}</password>
+            </server>
           </servers>
           <mirrors>
             <mirror>
               <id>01-nexus-mirror-maven-central</id>
-              <mirrorOf>external:*,!nexus-repository,!nexus-releases,!nexus-snapshots</mirrorOf>
+              <mirrorOf>external:*,!nexus-repository,!nexus-releases,!nexus-snapshots,!central,!ossrh</mirrorOf>
               <url>https://nexus.oberon-oss.eu/repository/maven-central/</url>
             </mirror>
           </mirrors>
+          <profiles>
+            <profile>
+              <id>gpg-passphrase-profile</id>
+              <activation>
+                <activeByDefault>true</activeByDefault>
+              </activation>
+              <properties>
+                <gpg.passphrase>${GPG_PASSPHRASE}</gpg.passphrase>
+              </properties>
+            </profile>
+          </profiles>
         </settings>
         EOF
